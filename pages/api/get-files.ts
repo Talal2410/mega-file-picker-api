@@ -1,6 +1,6 @@
 // pages/api/get-files.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { Storage, File } from 'megajs'; // Import the File type
+import { Storage } from 'megajs'; // Import the File type
 
 // Define the structure of the file data we will send back
 export interface ApiMegaFile {
