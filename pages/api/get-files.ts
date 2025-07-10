@@ -11,6 +11,14 @@ export interface ApiMegaFile {
   url: string;
 }
 
+// Create a simple interface to represent the file node structure for clarity
+interface MegaFileNode {
+  directory: boolean;
+  name?: string;
+  handle?: string;
+  path?: { name: string }[];
+}
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -30,17 +38,14 @@ export default async function handler(
     const files: ApiMegaFile[] = [];
     let fileIdCounter = 0;
 
-    // --- FINAL, CORRECTED LOGIC ---
-    // Use .forEach() which is more robustly typed than a for...of loop here.
-    storage.files.forEach((fileNode) => {
-      // We only care about actual files, not directories
+    // --- THE DEFINITIVE FIX: CASTING 'storage.files' TO A MAP ---
+    // We are telling TypeScript to trust us that storage.files is a Map.
+    (storage.files as Map<string, MegaFileNode>).forEach((fileNode) => {
       if (fileNode.directory) {
-        return; // 'return' in a forEach is like 'continue' in a for loop
+        return;
       }
 
       const fileName = fileNode.name || 'unknown-file';
-      
-      // The `path` property is an array of parent nodes. We need to map their names.
       const pathNames = (fileNode.path || []).map(parent => parent.name);
       
       const fullPath = pathNames.length > 0 
