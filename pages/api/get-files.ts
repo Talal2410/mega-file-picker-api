@@ -52,10 +52,12 @@ export default async function handler(
       if (!hasLogged) {
         console.log("--- START OF FIRST FILE NODE ---");
         try {
-            console.log(JSON.stringify(node, null, 2));
-        } catch (_e) { // RENAMED `e` to `_e` TO FIX LINTING ERROR
-            console.log("Could not stringify the node object. Printing keys instead:");
-            console.log(Object.keys(node));
+          console.log(JSON.stringify(node, null, 2));
+        // THIS IS THE FIX: Explicitly disable the unused-vars rule for the next line
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        } catch (e) {
+          console.log("Could not stringify the node object. Printing keys instead:");
+          console.log(Object.keys(node));
         }
         console.log("--- END OF FIRST FILE NODE ---");
         hasLogged = true;
