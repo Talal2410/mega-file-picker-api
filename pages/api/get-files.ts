@@ -11,12 +11,12 @@ export interface ApiMegaFile {
   url: string;
 }
 
-// Create a simple interface to represent the file node structure for clarity
+// Interface to describe the shape of the file node object from the library
 interface MegaFileNode {
   directory: boolean;
   name?: string;
   handle?: string;
-  path?: { name: string }[];
+  path?: { name:string }[];
 }
 
 export default async function handler(
@@ -38,15 +38,19 @@ export default async function handler(
     const files: ApiMegaFile[] = [];
     let fileIdCounter = 0;
 
-    // --- THE DEFINITIVE FIX: CASTING 'storage.files' TO A MAP ---
-    // We are telling TypeScript to trust us that storage.files is a Map.
-    (storage.files as Map<string, MegaFileNode>).forEach((fileNode) => {
-      if (fileNode.directory) {
-        return;
+    // --- THE FINAL, CORRECT WAY TO ITERATE OVER A PLAIN OBJECT ---
+    // Object.values() gets all the file objects, and we loop over that array.
+    // We use `as any` as a final measure to bypass the faulty library types.
+    for (const fileNode of Object.values(storage.files as any)) {
+      
+      const node = fileNode as MegaFileNode; // Treat each item as our defined interface
+
+      if (node.directory) {
+        continue;
       }
 
-      const fileName = fileNode.name || 'unknown-file';
-      const pathNames = (fileNode.path || []).map(parent => parent.name);
+      const fileName = node.name || 'unknown-file';
+      const pathNames = (node.path || []).map(parent => parent.name);
       
       const fullPath = pathNames.length > 0 
         ? `/${pathNames.join('/')}/${fileName}`
@@ -64,9 +68,9 @@ export default async function handler(
         fullPath,
         folderPath,
         extension,
-        url: `https://mega.nz/file/${fileNode.handle}`,
+        url: `https://mega.nz/file/${node.handle}`,
       });
-    });
+    }
 
     res.status(200).json({ files });
 
