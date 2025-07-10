@@ -1,6 +1,7 @@
 // pages/index.tsx
 import React, { useState, useCallback } from 'react';
-import { Upload, Shuffle, Copy, Download, Folder, RefreshCw, ExternalLink } from 'lucide-react';
+// Removed unused 'Copy' and 'Download' imports
+import { Upload, Shuffle, Folder, RefreshCw, ExternalLink } from 'lucide-react';
 
 // The interface now stores the handle, not a static URL
 interface MegaFile {
@@ -17,7 +18,7 @@ const MegaFilePicker = () => {
   const [database, setDatabase] = useState<MegaFile[]>([]);
   const [currentBatch, setCurrentBatch] = useState<MegaFile[]>([]);
   const [currentFile, setCurrentFile] = useState<MegaFile | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  // Removed unused 'isLoading' state
   const [isDragOver, setIsDragOver] = useState(false);
   const [stats, setStats] = useState({ folders: 0, files: 0 });
   const [isFetchingLink, setIsFetchingLink] = useState(false);
@@ -35,7 +36,7 @@ const MegaFilePicker = () => {
           const fullPath = match[1].trim();
           const handle = match[2].trim();
           const pathSegments = fullPath.split('/').filter(Boolean);
-          if (pathSegments.length === 0 || fullPath.endsWith('/')) continue; // Skip folders
+          if (pathSegments.length === 0 || fullPath.endsWith('/')) continue;
 
           const fileName = pathSegments[pathSegments.length - 1];
           const folderPath = pathSegments.length > 1 ? '/' + pathSegments.slice(0, -1).join('/') : '/';
@@ -70,7 +71,7 @@ const MegaFilePicker = () => {
 
   const handleFileUpload = async (file: File) => {
     if (!file) return;
-    setIsLoading(true);
+    // We don't need a global isLoading state for a quick file parse
     try {
       const text = await file.text();
       const parsedFiles = parseHandleFile(text);
@@ -82,14 +83,12 @@ const MegaFilePicker = () => {
       setCurrentFile(null);
       const folders = new Set(parsedFiles.map(f => f.folderPath)).size;
       setStats({ files: parsedFiles.length, folders });
-    } catch (error) {
-      alert('Error parsing file. Please check the format.');
-    } finally {
-      setIsLoading(false);
+    } catch (err) { // Fixed the 'any' type here
+        const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
+        alert(`Error parsing file: ${errorMessage}`);
     }
   };
   
-  // This is our new on-demand link generator function
   const getFreshLinkAndOpen = async (handle: string) => {
     setIsFetchingLink(true);
     try {
@@ -107,23 +106,22 @@ const MegaFilePicker = () => {
       const { url } = await response.json();
       window.open(url, '_blank', 'noopener,noreferrer');
 
-    } catch (error: any) {
-      alert(`Error generating link: ${error.message}`);
+    } catch (err) { // Fixed the 'any' type here
+        const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
+        alert(`Error generating link: ${errorMessage}`);
     } finally {
       setIsFetchingLink(false);
     }
   };
   
-  // --- The rest of the functions are mostly helper UI functions ---
-
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => { e.preventDefault(); setIsDragOver(false); const files = Array.from(e.dataTransfer.files); if (files.length > 0) handleFileUpload(files[0]); };
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => { e.preventDefault(); setIsDragOver(true); };
   const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => { e.preventDefault(); setIsDragOver(false); };
   const pickRandomFile = () => { if (database.length === 0) return; const randomFile = database[Math.floor(Math.random() * database.length)]; setCurrentFile(randomFile); if (!currentBatch.find(f => f.id === randomFile.id)) setCurrentBatch(prev => [randomFile, ...prev]); };
   const generateBatch = (count = 10) => { if (database.length === 0) return; const batch: MegaFile[] = []; const used = new Set<number>(); const limit = Math.min(count, database.length); while (batch.length < limit) { const randomFile = database[Math.floor(Math.random() * database.length)]; if (!used.has(randomFile.id)) { batch.push(randomFile); used.add(randomFile.id); } } setCurrentBatch(batch); setCurrentFile(batch[0] || null); };
   const getFileIcon = (type: string) => { switch(type) { case 'image': return '🖼️'; case 'video': return '🎥'; case 'audio': return '🎵'; case 'document': return '📄'; default: return '📁'; } };
-  const clearBatch = () => { setCurrentBatch([]); setCurrentFile(null); };
   const resetApp = () => { setDatabase([]); setCurrentBatch([]); setCurrentFile(null); setStats({ folders: 0, files: 0 }); };
+  // Removed unused 'clearBatch' function
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 font-sans">
