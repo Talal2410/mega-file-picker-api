@@ -9,22 +9,20 @@ interface MegaFile {
   fullPath: string;
   folderPath: string;
   extension: string;
-  url: string; // The URL will be the handle link for now
+  url: string; 
 }
 
 const MegaFilePicker = () => {
   const [database, setDatabase] = useState<MegaFile[]>([]);
   const [currentBatch, setCurrentBatch] = useState<MegaFile[]>([]);
   const [currentFile, setCurrentFile] = useState<MegaFile | null>(null);
-  const [isLoading, setIsLoading] = useState(true); // Start in loading state
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState({ folders: 0, files: 0 });
   
-  // This function runs once when the page loads
   useEffect(() => {
     const fetchFiles = async () => {
       try {
-        // Call our own backend API
         const response = await fetch('/api/get-files');
         
         if (!response.ok) {
@@ -38,32 +36,24 @@ const MegaFilePicker = () => {
         if (parsedFiles.length === 0) {
           setError('No files found in your MEGA account.');
         } else {
-           // We need to generate the full link. `megajs` doesn't provide it directly in the file list.
-           // The API provides the handle, which is what we need.
-          const filesWithFullLinks = parsedFiles.map(file => ({
-            ...file,
-            // The url from the API is already in the format we need
-          }));
-
-          setDatabase(filesWithFullLinks);
-          const folders = new Set(filesWithFullLinks.map(f => f.folderPath)).size;
+          setDatabase(parsedFiles);
+          const folders = new Set(parsedFiles.map(f => f.folderPath)).size;
           setStats({
-            files: filesWithFullLinks.length,
+            files: parsedFiles.length,
             folders,
           });
         }
-      } catch (e: any) {
+      } catch (e) { // 'e' is of type 'unknown'
+        const errorMessage = e instanceof Error ? e.message : 'An unknown error occurred';
         console.error(e);
-        setError(`An error occurred: ${e.message}`);
+        setError(`An error occurred: ${errorMessage}`);
       } finally {
         setIsLoading(false);
       }
     };
     
     fetchFiles();
-  }, []); // The empty array [] means this effect runs only once
-
-  // --- The rest of the functions are mostly the same as your original app ---
+  }, []);
 
   const getFileType = (extension: string) => {
     const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'];
@@ -157,12 +147,8 @@ const MegaFilePicker = () => {
 
   const openInMega = (url: string) => {
     if (!url) return;
-    // We can't generate the full link with key easily this way, so we open the handle link
-    // MEGA will ask for the key if the user hasn't opened it before.
     window.open(url, '_blank', 'noopener,noreferrer');
   };
-
-  // --- UI Rendering ---
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 font-sans">

@@ -1,6 +1,6 @@
 // pages/api/get-files.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { Storage } from 'megajs';
+import { Storage, File } from 'megajs'; // Import the File type
 
 // Define the structure of the file data we will send back
 export interface ApiMegaFile {
@@ -10,6 +10,14 @@ export interface ApiMegaFile {
   folderPath: string;
   extension: string;
   url: string;
+}
+
+// Define a simple type for the node object to satisfy ESLint
+interface MegaNode {
+  directory: boolean;
+  name?: string;
+  children?: MegaNode[];
+  handle?: string;
 }
 
 // This is the main function for our API endpoint
@@ -36,17 +44,17 @@ export default async function handler(
     let fileIdCounter = 0;
 
     // Helper function to recursively find all files
-    function findFiles(node: any, currentPath = '') {
+    function findFiles(node: MegaNode, currentPath = '') { // Use our new MegaNode type
       if (node.directory) {
         // If it's a folder, go through its children
-        for (const child of node.children) {
+        for (const child of node.children || []) {
           findFiles(child, `${currentPath}/${node.name || ''}`);
         }
       } else {
         // If it's a file, extract its info
         const fullPath = `${currentPath}/${node.name}`.replace('//', '/'); // Clean up path
         const pathSegments = fullPath.split('/').filter(Boolean);
-        const fileName = node.name;
+        const fileName = node.name || 'unknown-file';
         const folderPath = pathSegments.length > 1 ? '/' + pathSegments.slice(0, -1).join('/') : '/';
         const extension = fileName.split('.').pop()?.toLowerCase() || '';
         
@@ -57,21 +65,20 @@ export default async function handler(
           fullPath: fullPath,
           folderPath: folderPath,
           extension: extension,
-          // We can generate the link here, but megajs has a better way
-          // For now, we'll create the link on the frontend from the handle
-          url: `https://mega.nz/file/${node.handle}`, // This will be the handle-based URL
+          url: `https://mega.nz/file/${node.handle}`,
         });
       }
     }
     
     // Start finding files from the root of your cloud drive
-    findFiles(storage.root);
+    findFiles(storage.root as MegaNode); // Assert the type here
 
     // Send the list of files back to the frontend as a successful response
     res.status(200).json({ files });
 
-  } catch (error: any) {
+  } catch (error) { // The error is of type 'unknown' by default, which is fine
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
     console.error('MEGA API Error:', error);
-    res.status(500).json({ error: 'Failed to connect to MEGA or fetch files.', details: error.message });
+    res.status(500).json({ error: 'Failed to connect to MEGA or fetch files.', details: errorMessage });
   }
 }
