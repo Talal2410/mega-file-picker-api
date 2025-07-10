@@ -9,7 +9,7 @@ interface MegaFile {
   folderPath: string;
   extension: string;
   type: string;
-  handle: string; // We still parse it, but we'll use fullPath for the API
+  handle: string;
 }
 
 const MegaFilePicker = () => {
@@ -84,14 +84,13 @@ const MegaFilePicker = () => {
     }
   };
   
-  // This now sends the fullPath instead of the handle
   const getFreshLinkAndOpen = async (path: string) => {
     setIsFetchingLink(true);
     try {
       const response = await fetch('/api/get-fresh-link', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path }), // Send path
+        body: JSON.stringify({ path }),
       });
 
       if (!response.ok) {
