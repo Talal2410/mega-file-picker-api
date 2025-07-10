@@ -11,11 +11,11 @@ export interface ApiMegaFile {
   url: string;
 }
 
-// Interface to describe the shape of the file node object for clarity
+// Interface to describe the shape of the file node object, updated with our findings
 interface MegaFileNode {
   directory: boolean;
   name?: string;
-  handle?: string;
+  nodeId?: string; // We discovered the handle is called nodeId!
   path?: { name: string }[];
 }
 
@@ -38,7 +38,8 @@ export default async function handler(
     const files: ApiMegaFile[] = [];
     let fileIdCounter = 0;
 
-    let hasLogged = false;
+    // --- PRODUCTION CODE ---
+    // This now loops through all files and uses the correct `nodeId` property.
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     for (const fileNode of Object.values(storage.files as any)) {
@@ -47,20 +48,6 @@ export default async function handler(
 
       if (node.directory) {
         continue;
-      }
-
-      if (!hasLogged) {
-        console.log("--- START OF FIRST FILE NODE ---");
-        try {
-          console.log(JSON.stringify(node, null, 2));
-        // THIS IS THE FIX: Explicitly disable the unused-vars rule for the next line
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        } catch (e) {
-          console.log("Could not stringify the node object. Printing keys instead:");
-          console.log(Object.keys(node));
-        }
-        console.log("--- END OF FIRST FILE NODE ---");
-        hasLogged = true;
       }
 
       const fileName = node.name || 'unknown-file';
@@ -82,12 +69,9 @@ export default async function handler(
         fullPath,
         folderPath,
         extension,
-        url: `https://mega.nz/file/${node.handle}`,
+        // Use the correct property: `node.nodeId`
+        url: `https://mega.nz/file/${node.nodeId}`,
       });
-
-      if (files.length >= 1) {
-        break;
-      }
     }
 
     res.status(200).json({ files });
