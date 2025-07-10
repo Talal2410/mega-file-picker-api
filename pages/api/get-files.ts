@@ -11,6 +11,7 @@ export interface ApiMegaFile {
   url: string;
 }
 
+// Interface to describe the shape of the file node object for clarity
 interface MegaFileNode {
   directory: boolean;
   name?: string;
@@ -37,9 +38,10 @@ export default async function handler(
     const files: ApiMegaFile[] = [];
     let fileIdCounter = 0;
 
-    // --- THE FINAL, DEFINITIVE FIX ---
-    // We are disabling the ESLint rule for this specific line because the `megajs`
-    // library has incorrect type definitions, and this is the only way to bypass it.
+    // --- TESTING CODE ---
+    let hasLogged = false; // Flag to ensure we only log the first file
+
+    // We use `as any` as a final measure to bypass the faulty library types.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     for (const fileNode of Object.values(storage.files as any)) {
       
@@ -48,6 +50,21 @@ export default async function handler(
       if (node.directory) {
         continue;
       }
+
+      // --- THIS IS THE LOGGING PART FOR OUR TEST ---
+      if (!hasLogged) {
+        console.log("--- START OF FIRST FILE NODE ---");
+        // We use a try/catch here because JSON.stringify can fail on circular structures
+        try {
+            console.log(JSON.stringify(node, null, 2));
+        } catch (e) {
+            console.log("Could not stringify the node object. Printing keys instead:");
+            console.log(Object.keys(node));
+        }
+        console.log("--- END OF FIRST FILE NODE ---");
+        hasLogged = true;
+      }
+      // --- END OF LOGGING PART ---
 
       const fileName = node.name || 'unknown-file';
       const pathNames = (node.path || []).map(parent => parent.name);
@@ -70,6 +87,12 @@ export default async function handler(
         extension,
         url: `https://mega.nz/file/${node.handle}`,
       });
+
+      // --- THIS STOPS THE LOOP AFTER ONE FILE ---
+      // This helps us get a fast response and avoids Vercel timeouts for the test.
+      if (files.length >= 1) {
+        break;
+      }
     }
 
     res.status(200).json({ files });
