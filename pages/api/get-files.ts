@@ -2,7 +2,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { Storage } from 'megajs';
 
-// This interface remains the same
 export interface ApiMegaFile {
   id: number;
   fileName: string;
@@ -31,24 +30,25 @@ export default async function handler(
     const files: ApiMegaFile[] = [];
     let fileIdCounter = 0;
 
-    // --- NEW, SIMPLER LOGIC ---
-    // Iterate over the flat list of files provided by megajs
-    for (const fileNode of storage.files.values()) {
+    // --- FINAL, CORRECTED LOGIC ---
+    // Use .forEach() which is more robustly typed than a for...of loop here.
+    storage.files.forEach((fileNode) => {
       // We only care about actual files, not directories
       if (fileNode.directory) {
-        continue;
+        return; // 'return' in a forEach is like 'continue' in a for loop
       }
 
-      // The fileNode object has all the properties we need!
       const fileName = fileNode.name || 'unknown-file';
       
-      // Reconstruct the full path from the `path` array
-      const fullPath = fileNode.path.length > 0 
-        ? `/${fileNode.path.join('/')}/${fileName}`
+      // The `path` property is an array of parent nodes. We need to map their names.
+      const pathNames = (fileNode.path || []).map(parent => parent.name);
+      
+      const fullPath = pathNames.length > 0 
+        ? `/${pathNames.join('/')}/${fileName}`
         : `/${fileName}`;
 
-      const folderPath = fileNode.path.length > 0
-        ? `/${fileNode.path.join('/')}`
+      const folderPath = pathNames.length > 0
+        ? `/${pathNames.join('/')}`
         : '/';
         
       const extension = fileName.split('.').pop()?.toLowerCase() || '';
@@ -59,10 +59,9 @@ export default async function handler(
         fullPath,
         folderPath,
         extension,
-        // The .handle property is correct on these fileNode objects
         url: `https://mega.nz/file/${fileNode.handle}`,
       });
-    }
+    });
 
     res.status(200).json({ files });
 
