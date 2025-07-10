@@ -1,9 +1,7 @@
 // pages/index.tsx
 import React, { useState, useCallback } from 'react';
-// Removed unused 'Copy' and 'Download' imports
 import { Upload, Shuffle, Folder, RefreshCw, ExternalLink } from 'lucide-react';
 
-// The interface now stores the handle, not a static URL
 interface MegaFile {
   id: number;
   fileName: string;
@@ -11,19 +9,17 @@ interface MegaFile {
   folderPath: string;
   extension: string;
   type: string;
-  handle: string; // The crucial piece of info
+  handle: string; // We still parse it, but we'll use fullPath for the API
 }
 
 const MegaFilePicker = () => {
   const [database, setDatabase] = useState<MegaFile[]>([]);
   const [currentBatch, setCurrentBatch] = useState<MegaFile[]>([]);
   const [currentFile, setCurrentFile] = useState<MegaFile | null>(null);
-  // Removed unused 'isLoading' state
   const [isDragOver, setIsDragOver] = useState(false);
   const [stats, setStats] = useState({ folders: 0, files: 0 });
   const [isFetchingLink, setIsFetchingLink] = useState(false);
 
-  // This function now parses the `megacmd find --show-handles` output
   const parseHandleFile = useCallback((text: string): MegaFile[] => {
     const lines = text.split('\n');
     const files: MegaFile[] = [];
@@ -71,7 +67,6 @@ const MegaFilePicker = () => {
 
   const handleFileUpload = async (file: File) => {
     if (!file) return;
-    // We don't need a global isLoading state for a quick file parse
     try {
       const text = await file.text();
       const parsedFiles = parseHandleFile(text);
@@ -83,19 +78,20 @@ const MegaFilePicker = () => {
       setCurrentFile(null);
       const folders = new Set(parsedFiles.map(f => f.folderPath)).size;
       setStats({ files: parsedFiles.length, folders });
-    } catch (err) { // Fixed the 'any' type here
+    } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
         alert(`Error parsing file: ${errorMessage}`);
     }
   };
   
-  const getFreshLinkAndOpen = async (handle: string) => {
+  // This now sends the fullPath instead of the handle
+  const getFreshLinkAndOpen = async (path: string) => {
     setIsFetchingLink(true);
     try {
       const response = await fetch('/api/get-fresh-link', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ handle }),
+        body: JSON.stringify({ path }), // Send path
       });
 
       if (!response.ok) {
@@ -106,7 +102,7 @@ const MegaFilePicker = () => {
       const { url } = await response.json();
       window.open(url, '_blank', 'noopener,noreferrer');
 
-    } catch (err) { // Fixed the 'any' type here
+    } catch (err) {
         const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
         alert(`Error generating link: ${errorMessage}`);
     } finally {
@@ -121,7 +117,6 @@ const MegaFilePicker = () => {
   const generateBatch = (count = 10) => { if (database.length === 0) return; const batch: MegaFile[] = []; const used = new Set<number>(); const limit = Math.min(count, database.length); while (batch.length < limit) { const randomFile = database[Math.floor(Math.random() * database.length)]; if (!used.has(randomFile.id)) { batch.push(randomFile); used.add(randomFile.id); } } setCurrentBatch(batch); setCurrentFile(batch[0] || null); };
   const getFileIcon = (type: string) => { switch(type) { case 'image': return '🖼️'; case 'video': return '🎥'; case 'audio': return '🎵'; case 'document': return '📄'; default: return '📁'; } };
   const resetApp = () => { setDatabase([]); setCurrentBatch([]); setCurrentFile(null); setStats({ folders: 0, files: 0 }); };
-  // Removed unused 'clearBatch' function
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-4 font-sans">
@@ -159,7 +154,7 @@ const MegaFilePicker = () => {
                     <Folder className="h-4 w-4 mr-2 mt-0.5 flex-shrink-0" />
                     <span className="break-all">{currentFile.folderPath}</span>
                   </div>
-                  <button onClick={() => getFreshLinkAndOpen(currentFile.handle)} disabled={isFetchingLink} className="w-full bg-white text-blue-600 font-semibold px-4 py-3 rounded-xl hover:bg-blue-50 transition-colors flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-wait">
+                  <button onClick={() => getFreshLinkAndOpen(currentFile.fullPath)} disabled={isFetchingLink} className="w-full bg-white text-blue-600 font-semibold px-4 py-3 rounded-xl hover:bg-blue-50 transition-colors flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-wait">
                     {isFetchingLink ? <RefreshCw className="h-5 w-5 animate-spin" /> : <ExternalLink className="h-5 w-5" />}
                     <span>{isFetchingLink ? 'Generating Link...' : 'Get Fresh Link & Open'}</span>
                   </button>
@@ -182,7 +177,7 @@ const MegaFilePicker = () => {
                           <div className="font-medium text-sm truncate">{file.fileName}</div>
                           <div className="text-xs text-gray-500 truncate">{file.folderPath}</div>
                         </div>
-                        <button onClick={(e) => { e.stopPropagation(); getFreshLinkAndOpen(file.handle); }} disabled={isFetchingLink} className="text-gray-400 hover:text-blue-600 p-1 rounded-full disabled:opacity-50"><ExternalLink className="h-4 w-4" /></button>
+                        <button onClick={(e) => { e.stopPropagation(); getFreshLinkAndOpen(file.fullPath); }} disabled={isFetchingLink} className="text-gray-400 hover:text-blue-600 p-1 rounded-full disabled:opacity-50"><ExternalLink className="h-4 w-4" /></button>
                       </div>
                     ))}
                   </div>

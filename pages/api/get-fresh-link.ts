@@ -4,7 +4,8 @@ import { Storage } from 'megajs';
 
 // A simple interface for the file node to help with type safety
 interface MegaFileNode {
-  link: () => Promise<string>;
+  // The link method expects an options object, even if it's empty
+  link: (options?: object) => Promise<string>;
 }
 
 export default async function handler(
@@ -15,10 +16,10 @@ export default async function handler(
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const { handle } = req.body;
+  const { path } = req.body;
 
-  if (!handle) {
-    return res.status(400).json({ error: 'File handle is required.' });
+  if (!path) {
+    return res.status(400).json({ error: 'File path is required.' });
   }
 
   if (!process.env.MEGA_EMAIL || !process.env.MEGA_PASSWORD) {
@@ -33,17 +34,15 @@ export default async function handler(
 
     await storage.ready;
 
-    // --- THE DEFINITIVE FIX: DOUBLE CASTING ---
-    // First, cast to 'unknown' to erase the faulty type information.
-    // Then, cast to the Map type that we know it behaves like.
-    const filesMap = storage.files as unknown as Map<string, MegaFileNode>;
-    const fileNode = filesMap.get(handle);
+    const fileNode = storage.find(path) as MegaFileNode | undefined;
 
     if (!fileNode) {
-      return res.status(404).json({ error: 'File not found for the given handle.' });
+      return res.status(404).json({ error: `File not found at path: ${path}` });
     }
 
-    const freshUrl = await fileNode.link();
+    // --- THE FIX ---
+    // Provide an empty options object {} to the link() method.
+    const freshUrl = await fileNode.link({});
 
     res.status(200).json({ url: freshUrl });
 
